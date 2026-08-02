@@ -83,6 +83,8 @@ async function main() {
   const ntPath = join(import.meta.dirname, "..", "nt-videos.json");
   const otBooks: SeedBook[] = JSON.parse(readFileSync(otPath, "utf-8"));
   const ntBooks: SeedBook[] = JSON.parse(readFileSync(ntPath, "utf-8"));
+  const kidsPath = join(import.meta.dirname, "..", "kids-videos.json");
+  const kidsVideos: SeedBook[] = JSON.parse(readFileSync(kidsPath, "utf-8"));
 
   console.log(`Loaded ${otBooks.length} OT and ${ntBooks.length} NT books. Seeding videos...`);
   const books = [...otBooks, ...ntBooks];
@@ -95,6 +97,18 @@ async function main() {
       ON CONFLICT (youtube_id, title) DO NOTHING;
     `;
     console.log(`  Seeded #${i + 1}: ${b.book} (${b.type})`);
+  }
+
+  console.log(`Loaded ${kidsVideos.length} creator videos. Seeding creator content...`);
+  for (let i = 0; i < kidsVideos.length; i++) {
+    const b = kidsVideos[i];
+    const gradient = GRADIENTS[(books.length + i) % GRADIENTS.length];
+    await sql`
+      INSERT INTO videos (title, channel, youtube_id, gradient, views, video_type, book_order)
+      VALUES (${b.title}, ${b.channel}, ${b.youtubeId}, ${gradient}, 0, 'creator', 999999)
+      ON CONFLICT (youtube_id, title) DO NOTHING;
+    `;
+    console.log(`  Seeded creator #${i + 1}: ${b.title} (${b.channel})`);
   }
 
   console.log("Seed complete.");
