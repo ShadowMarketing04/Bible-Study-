@@ -382,7 +382,7 @@ async function handleApiSubscription(req: Request): Promise<Response | null> {
     if (!row) return Response.json({ subscription: null });
     return Response.json({
       subscription: {
-        tier: row.tier as "pro" | "creator",
+        tier: row.tier as string,
         status: row.status as string,
         active: row.status === "active",
         current_period_end: row.current_period_end ? String(row.current_period_end) : null,

@@ -44,7 +44,7 @@ function Profile() {
     name: string | null;
   } | null>(null);
   const [history, setHistory] = useState<WatchItem[]>([]);
-  const [subscription, setSubscription] = useState<{ tier: "pro" | "creator"; active: boolean } | null>(null);
+  const [subscription, setSubscription] = useState<{ tier: string; active: boolean } | null>(null);
 
   useEffect(() => {
     async function load() {

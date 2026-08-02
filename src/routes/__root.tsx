@@ -79,7 +79,7 @@ function TopNav() {
     id: number;
     email: string;
     name: string | null;
-    subscription?: { tier: "pro" | "creator"; active: boolean } | null;
+    subscription?: { tier: string; active: boolean } | null;
   } | null>(null);
   const [loaded, setLoaded] = useState(false);
 
