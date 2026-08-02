@@ -100,9 +100,7 @@ function TopNav() {
             Upload
           </a>
           <a
-            href="https://buy.stripe.com/3cI7sLaJugXf2fm6jjdnW00"
-            target="_blank"
-            rel="noopener"
+            href="/support"
             className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-100 hover:text-rose-700"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
