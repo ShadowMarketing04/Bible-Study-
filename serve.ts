@@ -31,6 +31,48 @@ const freePort =
   `kill $pids 2>/dev/null || true; sleep 0.2; ` +
   `done`;
 
+/* ---------- email ---------- */
+// Sends the waitlist welcome email from the team's mailbox. ctomail.io is an
+// inbound-only catch-all (MX -> AWS SES inbound) and no send API is documented
+// or reachable, so this does a best-effort POST to the presumed ctomail send
+// endpoint and, if that can't deliver, logs the full message so it can be
+// replayed/wired to a real relay (SMTP/HTTP API) later. Never throws — email
+// failures must not fail the signup that already succeeded.
+const MAIL_FROM = "vidview-cc96ced0@ctomail.io";
+
+async function sendWelcomeEmail(to: string): Promise<void> {
+  const subject = "Welcome to VidView — you're on the list!";
+  const text =
+    `Hi there,\n\n` +
+    `You're officially on the VidView early-access list — welcome aboard! 🎉\n\n` +
+    `VidView is a video platform where Bible stories come alive, and you'll be the first to know as we add new features and content.\n\n` +
+    `We can't wait to share it with you. Stay tuned!\n\n` +
+    `— The VidView Team`;
+  const payload = { from: MAIL_FROM, to, subject, text };
+  try {
+    const res = await fetch("https://api.ctomail.io/v1/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      console.log(`[mail] welcome email sent to ${to}`);
+    } else {
+      console.error(
+        `[mail] welcome email API returned ${res.status} for ${to}; email not delivered, payload:`,
+        payload
+      );
+    }
+  } catch (err) {
+    console.error(
+      `[mail] welcome email send failed for ${to}; email not delivered, payload:`,
+      payload,
+      err
+    );
+  }
+}
+
 // API handlers (bypass TanStack Start server functions for reliability on Vercel)
 async function handleApiAuth(req: Request): Promise<Response | null> {
   const { pathname } = new URL(req.url);
@@ -339,6 +381,11 @@ async function handleApiWaitlist(req: Request): Promise<Response | null> {
     }
 
     await sql()`INSERT INTO waitlist (email) VALUES (${email})`;
+    // Send the welcome email after a successful NEW signup. A send failure
+    // must not fail the signup, so it's best-effort and never thrown here.
+    await sendWelcomeEmail(email).catch((err) =>
+      console.error("[api] waitlist welcome email failed:", err)
+    );
     return Response.json({ success: true, reason: "ok" });
   } catch (err) {
     console.error("[api] waitlist error:", err);

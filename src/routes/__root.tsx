@@ -15,6 +15,28 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "VidView — Views of the Word" },
+      {
+        name: "description",
+        content:
+          "Watch Bible story videos, track your progress through every book, and discover the most-viewed scripture content.",
+      },
+      // Open Graph / social sharing (og:url is static — the head() hook has no
+      // request context here; update once a custom domain is live)
+      { property: "og:title", content: "VidView — Views of the Word" },
+      {
+        property: "og:description",
+        content:
+          "Watch Bible story videos, track your progress through every book, and discover the most-viewed scripture content.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://vidview-nxqq.onrender.com" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "VidView — Views of the Word" },
+      {
+        name: "twitter:description",
+        content:
+          "Watch Bible story videos, track your progress through every book, and discover the most-viewed scripture content.",
+      },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),

@@ -108,6 +108,39 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
+function LinkIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.451-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117l11.966 15.644Z" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073Z" />
+    </svg>
+  );
+}
+
 /* ---------- components ---------- */
 
 function VideoCard({
@@ -219,6 +252,84 @@ function VideoModal({
 }
 
 /* ---------- page ---------- */
+
+function ShareSection() {
+  const [copied, setCopied] = useState(false);
+  // Resolved in the browser at click time; safe fallback for SSR/first paint.
+  const siteUrl =
+    typeof window !== "undefined" ? window.location.origin : "https://vidview-nxqq.onrender.com";
+  const shareText = "Watching the Bible come alive on VidView 📖✨";
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(siteUrl);
+    } catch {
+      // Older/insecure-context fallback
+      const textarea = document.createElement("textarea");
+      textarea.value = siteUrl;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleShareX() {
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+      shareText
+    )}&url=${encodeURIComponent(siteUrl)}`;
+    window.open(url, "_blank", "noopener,noreferrer,width=600,height=520");
+  }
+
+  function handleShareFacebook() {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+      siteUrl
+    )}`;
+    window.open(url, "_blank", "noopener,noreferrer,width=600,height=520");
+  }
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 pt-4 pb-16 sm:pb-20">
+      <div className="rounded-2xl border border-stone-200 bg-white px-6 py-8 text-center shadow-sm">
+        <h2 className="text-lg font-bold text-stone-900">Share VidView</h2>
+        <p className="mt-1 text-sm text-stone-500">
+          Know someone who'd love to watch the Bible come alive? Spread the Word.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handleCopyLink}
+            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.98] ${
+              copied
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-stone-300 bg-white text-stone-700 hover:border-amber-300 hover:bg-stone-50 hover:text-stone-900"
+            }`}
+          >
+            <LinkIcon className="h-4 w-4" />
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
+          <button
+            onClick={handleShareX}
+            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-all duration-200 hover:border-amber-300 hover:bg-stone-50 hover:text-stone-900 active:scale-[0.98]"
+          >
+            <XIcon className="h-4 w-4" />
+            Share on X
+          </button>
+          <button
+            onClick={handleShareFacebook}
+            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 shadow-sm transition-all duration-200 hover:border-amber-300 hover:bg-stone-50 hover:text-stone-900 active:scale-[0.98]"
+          >
+            <FacebookIcon className="h-4 w-4" />
+            Share on Facebook
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function Home() {
   const { uploaded, sort: initialSort, welcome, watch: watchParam } = Route.useSearch();
@@ -490,6 +601,9 @@ function Home() {
           </div>
         )}
       </section>
+
+      {/* ====== SHARE VIDVIEW ====== */}
+      <ShareSection />
 
       {/* ====== HOW IT WORKS ====== */}
       <section className="border-y border-stone-200 bg-white py-16 sm:py-20">
