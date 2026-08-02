@@ -44,6 +44,7 @@ function Profile() {
     name: string | null;
   } | null>(null);
   const [history, setHistory] = useState<WatchItem[]>([]);
+  const [subscription, setSubscription] = useState<{ tier: "pro" | "creator"; active: boolean } | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -63,6 +64,11 @@ function Profile() {
         }
         setUser(data.user);
         setHistory(data.history);
+        const subscriptionResponse = await fetch("/api/subscription");
+        if (subscriptionResponse.ok) {
+          const subscriptionData = await subscriptionResponse.json();
+          setSubscription(subscriptionData.subscription ?? null);
+        }
       } catch {
         window.location.href = "/auth";
       } finally {
@@ -122,9 +128,14 @@ function Profile() {
                   {displayName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-stone-900">
-                    {displayName}
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-bold text-stone-900">{displayName}</h1>
+                    {subscription?.active && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                        {subscription.tier}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-stone-500">{user.email}</p>
                 </div>
               </div>

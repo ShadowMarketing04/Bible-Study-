@@ -363,6 +363,51 @@ async function handleApiProfile(req: Request): Promise<Response | null> {
   }
 }
 
+// GET /api/subscription — return the authenticated user's current subscription.
+async function handleApiSubscription(req: Request): Promise<Response | null> {
+  const { pathname } = new URL(req.url);
+  if (pathname !== "/api/subscription" || req.method !== "GET") return null;
+
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) return Response.json({ subscription: null });
+    const rows = await sql()`
+      SELECT tier, status, current_period_end
+      FROM subscriptions
+      WHERE user_id = ${user.id}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row) return Response.json({ subscription: null });
+    return Response.json({
+      subscription: {
+        tier: row.tier as "pro" | "creator",
+        status: row.status as string,
+        active: row.status === "active",
+        current_period_end: row.current_period_end ? String(row.current_period_end) : null,
+      },
+    });
+  } catch (err) {
+    console.error("[api] subscription error:", err);
+    return Response.json({ subscription: null, error: "Unable to load subscription." }, { status: 500 });
+  }
+}
+
+// POST /api/stripe/webhook — placeholder for Stripe event processing.
+async function handleStripeWebhook(req: Request): Promise<Response | null> {
+  const { pathname } = new URL(req.url);
+  if (pathname !== "/api/stripe/webhook" || req.method !== "POST") return null;
+  try {
+    const body = await req.text();
+    console.log("[stripe webhook] event:", body);
+    return Response.json({ received: true });
+  } catch (err) {
+    console.error("[stripe webhook] error:", err);
+    return Response.json({ received: false }, { status: 400 });
+  }
+}
+
 // POST /api/waitlist — join the early-access waitlist (de-dupes by email).
 async function handleApiWaitlist(req: Request): Promise<Response | null> {
   const { pathname } = new URL(req.url);
@@ -415,6 +460,10 @@ for (let attempt = 1; ; attempt++) {
         if (videoActionResult) return videoActionResult;
         const profileResult = await handleApiProfile(req);
         if (profileResult) return profileResult;
+        const subscriptionResult = await handleApiSubscription(req);
+        if (subscriptionResult) return subscriptionResult;
+        const stripeWebhookResult = await handleStripeWebhook(req);
+        if (stripeWebhookResult) return stripeWebhookResult;
         const waitlistResult = await handleApiWaitlist(req);
         if (waitlistResult) return waitlistResult;
         

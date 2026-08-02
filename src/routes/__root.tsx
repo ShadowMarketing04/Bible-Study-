@@ -79,13 +79,20 @@ function TopNav() {
     id: number;
     email: string;
     name: string | null;
+    subscription?: { tier: "pro" | "creator"; active: boolean } | null;
   } | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setUser(d.user))
+      .then((d) => {
+        if (!d.user) return;
+        fetch("/api/subscription")
+          .then((r) => r.json())
+          .then((subscription) => setUser({ ...d.user, subscription: subscription.subscription ?? null }))
+          .catch(() => setUser(d.user));
+      })
       .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
@@ -130,6 +137,12 @@ function TopNav() {
             </svg>
             Support
           </a>
+          <a
+            href="/pricing"
+            className="hidden sm:inline-flex items-center rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 shadow-sm transition-all duration-200 hover:bg-amber-100"
+          >
+            Pricing
+          </a>
           {loaded ? (
             user ? (
               <a
@@ -140,6 +153,11 @@ function TopNav() {
                   {displayName.charAt(0).toUpperCase()}
                 </span>
                 <span className="hidden sm:inline">{displayName}</span>
+                {user.subscription?.active && (
+                  <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                    {user.subscription.tier}
+                  </span>
+                )}
               </a>
             ) : (
               <a

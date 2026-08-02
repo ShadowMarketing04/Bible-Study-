@@ -63,6 +63,20 @@ async function main() {
     );
   `;
 
+  // Subscription records are provisioned here as well as in migrate.ts so a
+  // fresh database gets the complete schema from the standard seed command.
+  await sql`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      stripe_session_id TEXT,
+      tier TEXT NOT NULL CHECK (tier IN ('pro', 'creator')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'canceled', 'expired')),
+      current_period_end TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
   console.log("Tables ready. Loading OT and NT books...");
 
   const otPath = join(import.meta.dirname, "..", "..", "ot-videos.json");

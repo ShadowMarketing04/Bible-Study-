@@ -78,6 +78,21 @@ async function main() {
   `;
   console.log("  Created watch_history table");
 
+  // --- subscriptions table ---
+  await sql`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      stripe_session_id TEXT,
+      tier TEXT NOT NULL CHECK (tier IN ('pro', 'creator')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'canceled', 'expired')),
+      current_period_end TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS subscriptions_user_status_idx ON subscriptions(user_id, status)`;
+  console.log("  Created subscriptions table");
+
   console.log("Migration complete.");
 }
 
