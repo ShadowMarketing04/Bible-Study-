@@ -1,0 +1,142 @@
+import {
+  HeadContent,
+  Outlet,
+  Scripts,
+  createRootRoute,
+} from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { useState, useEffect } from "react";
+
+import appCss from "~/styles/app.css?url";
+
+export const Route = createRootRoute({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "VidView — Views of the Word" },
+    ],
+    links: [{ rel: "stylesheet", href: appCss }],
+  }),
+  notFoundComponent: () => <div>Page not found</div>,
+  component: RootComponent,
+});
+
+/* ---------- icons ---------- */
+
+function CrossIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.2}
+      strokeLinecap="round"
+    >
+      <line x1="12" y1="4" x2="12" y2="14" />
+      <line x1="8" y1="9" x2="16" y2="9" />
+      <line x1="12" y1="14" x2="12" y2="20" />
+    </svg>
+  );
+}
+
+/* ---------- components ---------- */
+
+function RootComponent() {
+  return (
+    <RootDocument>
+      <TopNav />
+      <Outlet />
+    </RootDocument>
+  );
+}
+
+function TopNav() {
+  const [user, setUser] = useState<{
+    id: number;
+    email: string;
+    name: string | null;
+  } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setUser(d.user))
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
+
+  const displayName = user?.name || "Profile";
+
+  return (
+    <nav className="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur-sm">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        <a
+          href="/"
+          className="flex items-center gap-2 text-stone-900 hover:text-amber-700 transition-colors"
+        >
+          <CrossIcon className="h-5 w-5 text-amber-600" />
+          <span className="text-base font-bold tracking-tight">VidView</span>
+        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="/upload"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-all duration-200 hover:bg-stone-50 hover:text-stone-800 hover:border-amber-300"
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Upload
+          </a>
+          {loaded ? (
+            user ? (
+              <a
+                href="/profile"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 shadow-sm transition-all duration-200 hover:bg-amber-100"
+              >
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-[10px] font-bold text-amber-800">
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+                <span className="hidden sm:inline">{displayName}</span>
+              </a>
+            ) : (
+              <a
+                href="/auth"
+                className="rounded-lg bg-amber-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-amber-700 hover:shadow-md active:scale-[0.98]"
+              >
+                Sign In
+              </a>
+            )
+          ) : (
+            <div className="h-8 w-16 animate-pulse rounded bg-stone-100" />
+          )}
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function RootDocument({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
