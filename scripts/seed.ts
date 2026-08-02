@@ -27,7 +27,7 @@ const GRADIENTS = [
   "from-teal-700 via-cyan-600 to-blue-500",
 ];
 
-interface OTBook {
+interface SeedBook {
   book: string;
   youtubeId: string;
   title: string;
@@ -63,23 +63,18 @@ async function main() {
     );
   `;
 
-  console.log("Tables ready. Loading OT books...");
+  console.log("Tables ready. Loading OT and NT books...");
 
-  const jsonPath = join(import.meta.dirname, "..", "..", "ot-videos.json");
-  const raw = readFileSync(jsonPath, "utf-8");
-  const books: OTBook[] = JSON.parse(raw);
+  const otPath = join(import.meta.dirname, "..", "..", "ot-videos.json");
+  const ntPath = join(import.meta.dirname, "..", "nt-videos.json");
+  const otBooks: SeedBook[] = JSON.parse(readFileSync(otPath, "utf-8"));
+  const ntBooks: SeedBook[] = JSON.parse(readFileSync(ntPath, "utf-8"));
 
-  console.log(`Loaded ${books.length} books. Truncating old data...`);
-
-  // Remove old seed data (which used different titles and a different unique constraint)
-  await sql`DELETE FROM videos`;
-
-  console.log("Seeding videos...");
-
+  console.log(`Loaded ${otBooks.length} OT and ${ntBooks.length} NT books. Seeding videos...`);
+  const books = [...otBooks, ...ntBooks];
   for (let i = 0; i < books.length; i++) {
     const b = books[i];
     const gradient = GRADIENTS[i % GRADIENTS.length];
-
     await sql`
       INSERT INTO videos (title, channel, youtube_id, gradient, views, video_type, book_order)
       VALUES (${b.book}, ${b.channel}, ${b.youtubeId}, ${gradient}, 0, ${b.type}, ${i + 1})
