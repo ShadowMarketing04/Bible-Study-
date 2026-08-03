@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 
 export const Route = createFileRoute("/")({
@@ -25,6 +25,7 @@ interface Video {
   views: number;
   gradient: string;
   youtubeId: string;
+  id?: number;
   videoType: string;
   bookOrder: number;
   watched: boolean;
@@ -592,11 +593,17 @@ function Home() {
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {videos.map((video) => (
-              <VideoCard
+              <Link
                 key={video.youtubeId}
-                {...video}
-                onClick={() => handleVideoClick(video)}
-              />
+                to="/video/$videoId"
+                params={{ videoId: String(video.id ?? video.bookOrder) }}
+                className="block"
+              >
+                <VideoCard
+                  {...video}
+                  onClick={() => handleVideoClick(video)}
+                />
+              </Link>
             ))}
           </div>
         )}

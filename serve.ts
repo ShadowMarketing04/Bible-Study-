@@ -166,6 +166,45 @@ async function getUserFromRequest(req: Request): Promise<{ id: number; email: st
   return await verifyToken(token);
 }
 
+// GET /api/video/:id — return the complete record used by a dedicated video page.
+async function handleApiVideo(req: Request): Promise<Response | null> {
+  const { pathname } = new URL(req.url);
+  const match = pathname.match(/^\/api\/video\/(\d+)$/);
+  if (!match || req.method !== "GET") return null;
+
+  try {
+    const id = Number(match[1]);
+    // Older databases may not have these optional content columns yet. Create
+    // them lazily so deployed databases upgrade without a separate migration.
+    await sql()`ALTER TABLE videos ADD COLUMN IF NOT EXISTS description TEXT`;
+    await sql()`ALTER TABLE videos ADD COLUMN IF NOT EXISTS book TEXT`;
+    const rows = await sql()`
+      SELECT id, title, description, youtube_id, book, video_type, channel
+      FROM videos WHERE id = ${id} LIMIT 1
+    `;
+    if (rows.length === 0) {
+      return Response.json({ success: false, error: "Video not found." }, { status: 404 });
+    }
+    const row = rows[0];
+    const book = (row.book as string | null) || (row.title as string);
+    return Response.json({
+      success: true,
+      video: {
+        id: row.id,
+        title: row.title,
+        description: (row.description as string | null) || `A Bible story video about ${book}.`,
+        youtube_id: row.youtube_id,
+        book,
+        video_type: (row.video_type as string) || "story",
+        channel: row.channel,
+      },
+    });
+  } catch (err) {
+    console.error("[api] video error:", err);
+    return Response.json({ success: false, error: "Unable to load video." }, { status: 500 });
+  }
+}
+
 async function handleApiVideos(req: Request): Promise<Response | null> {
   const url = new URL(req.url);
   if (url.pathname !== "/api/videos" || req.method !== "GET") return null;
@@ -174,11 +213,11 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
     const sort = url.searchParams.get("sort") === "views" ? "views" : "order";
     const rows = sort === "views"
       ? await sql()`
-          SELECT title, channel, youtube_id, gradient, views, video_type, book_order
+          SELECT id, title, channel, youtube_id, gradient, views, video_type, book_order
           FROM videos ORDER BY views DESC, book_order ASC
         `
       : await sql()`
-          SELECT title, channel, youtube_id, gradient, views, video_type, book_order
+          SELECT id, title, channel, youtube_id, gradient, views, video_type, book_order
           FROM videos ORDER BY book_order ASC
         `;
 
@@ -194,6 +233,7 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
 
     return Response.json({
       videos: rows.map((row) => ({
+        id: row.id as number,
         title: row.title,
         channel: row.channel,
         views: row.views as number,
@@ -505,6 +545,8 @@ for (let attempt = 1; ; attempt++) {
         // Handle API routes directly (bypass SSR for reliability on Vercel)
         const apiResult = await handleApiAuth(req);
         if (apiResult) return apiResult;
+        const videoResult = await handleApiVideo(req);
+        if (videoResult) return videoResult;
         const videosResult = await handleApiVideos(req);
         if (videosResult) return videosResult;
         const videoActionResult = await handleApiVideoActions(req);
