@@ -2,14 +2,47 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useCallback } from "react";
 
 export const Route = createFileRoute("/")({
+  loader: async ({ location }) => {
+    const requestedBook = new URLSearchParams(location.searchStr).get("book")?.trim();
+    if (!requestedBook) return { bookVideo: null };
+    try {
+      const base = typeof window === "undefined" ? "http://0.0.0.0:3000" : "";
+      const response = await fetch(`${base}/api/videos`);
+      const data = (await response.json()) as { videos?: Video[] };
+      const bookVideo = data.videos?.find((video) => video.book.toLowerCase() === requestedBook.toLowerCase()) ?? null;
+      return { bookVideo };
+    } catch { return { bookVideo: null }; }
+  },
+  head: ({ loaderData }) => {
+    const video = loaderData?.bookVideo;
+    if (!video) return {};
+    const book = video.book;
+    const description = `Watch the ${book} overview on VidView — a 7-minute animated summary of the book of ${book}.`;
+    const image = `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`;
+    const url = `https://vidview-nxqq.onrender.com/?book=${encodeURIComponent(book)}`;
+    return { meta: [
+      { title: `${book} — VidView` },
+      { property: "og:title", content: `${book} — VidView` },
+      { property: "og:description", content: description },
+      { property: "og:image", content: image },
+      { property: "og:url", content: url },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: `${book} — VidView` },
+      { name: "twitter:description", content: description },
+      { name: "twitter:image", content: image },
+    ] };
+  },
   component: Home,
   validateSearch: (search: Record<string, unknown>) => {
     const raw = search.uploaded;
+    const bookRaw = search.book;
     const sortRaw = search.sort;
     const welcomeRaw = search.welcome;
     const watchRaw = search.watch;
     return {
       uploaded: raw === "true" || raw === true,
+      book: typeof bookRaw === "string" && bookRaw.trim() ? bookRaw.trim() : undefined,
       sort: sortRaw === "views" ? ("views" as const) : ("order" as const),
       welcome: welcomeRaw === "true" || welcomeRaw === true,
       watch: typeof watchRaw === "string" ? watchRaw : undefined,
@@ -21,6 +54,7 @@ export const Route = createFileRoute("/")({
 
 interface Video {
   title: string;
+  book: string;
   channel: string;
   views: number;
   gradient: string;
@@ -332,6 +366,26 @@ function ShareSection() {
   );
 }
 
+function BookShareSection({ videos }: { videos: Video[] }) {
+  const books = Array.from(new Set(videos.map((video) => video.book).filter(Boolean)));
+  if (books.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-4">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/60 px-6 py-5 text-center">
+        <h2 className="text-lg font-bold text-stone-900">Share a book</h2>
+        <p className="mt-1 text-sm text-stone-500">Share a book overview with a unique preview card.</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {books.map((book) => (
+            <a key={book} href={`/?book=${encodeURIComponent(book)}`} className="rounded-full border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-800 transition hover:bg-amber-100">
+              {book}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Home() {
   const { uploaded, sort: initialSort, welcome, watch: watchParam } = Route.useSearch();
   const [sortMode, setSortMode] = useState<"order" | "views">(initialSort);
@@ -608,6 +662,9 @@ function Home() {
           </div>
         )}
       </section>
+
+      {/* ====== SHARE A BOOK ====== */}
+      <BookShareSection videos={videos} />
 
       {/* ====== SHARE VIDVIEW ====== */}
       <ShareSection />

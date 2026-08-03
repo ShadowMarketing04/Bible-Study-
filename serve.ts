@@ -213,11 +213,11 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
     const sort = url.searchParams.get("sort") === "views" ? "views" : "order";
     const rows = sort === "views"
       ? await sql()`
-          SELECT id, title, channel, youtube_id, gradient, views, video_type, book_order
+          SELECT id, title, book, channel, youtube_id, gradient, views, video_type, book_order
           FROM videos ORDER BY views DESC, book_order ASC
         `
       : await sql()`
-          SELECT id, title, channel, youtube_id, gradient, views, video_type, book_order
+          SELECT id, title, book, channel, youtube_id, gradient, views, video_type, book_order
           FROM videos ORDER BY book_order ASC
         `;
 
@@ -235,6 +235,7 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
       videos: rows.map((row) => ({
         id: row.id as number,
         title: row.title,
+        book: row.book,
         channel: row.channel,
         views: row.views as number,
         gradient: row.gradient,
