@@ -139,6 +139,27 @@ function TopNav() {
             Upload
           </a>
           <a
+            href="/playlists"
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-all duration-200 hover:bg-stone-50 hover:text-stone-800 hover:border-amber-300"
+          >
+            <svg
+              className="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <line x1="8" y1="6" x2="21" y2="6" />
+              <line x1="8" y1="12" x2="21" y2="12" />
+              <line x1="8" y1="18" x2="21" y2="18" />
+              <line x1="3" y1="6" x2="3.01" y2="6" />
+              <line x1="3" y1="12" x2="3.01" y2="12" />
+              <line x1="3" y1="18" x2="3.01" y2="18" />
+            </svg>
+            Playlists
+          </a>
+          <a
             href="/support"
             className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-1.5 text-sm font-medium text-rose-600 shadow-sm transition-all duration-200 hover:bg-rose-100 hover:text-rose-700"
           >

@@ -11,6 +11,7 @@
 import handler from "./dist/server/server.js";
 import { hashPassword, verifyPassword, signToken, verifyToken } from "./src/auth";
 import { sql } from "./src/db";
+import { playlists } from "./src/data/playlists";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -248,6 +249,85 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
   } catch (err) {
     console.error("[api] videos error:", err);
     return Response.json({ videos: [], error: "Unable to load videos." }, { status: 500 });
+  }
+}
+
+// GET /api/playlists — all curated playlists with their video counts.
+// GET /api/playlist/:id — a single playlist with full video objects (same item
+// shape as /api/videos, including the book || title fallback from commit 3eaf258).
+async function handleApiPlaylists(req: Request): Promise<Response | null> {
+  const { pathname } = new URL(req.url);
+
+  if (pathname === "/api/playlists" && req.method === "GET") {
+    try {
+      return Response.json({
+        playlists: playlists.map((playlist) => ({
+          id: playlist.id,
+          name: playlist.name,
+          description: playlist.description,
+          videoCount: playlist.videoIds.length,
+        })),
+      });
+    } catch (err) {
+      console.error("[api] playlists error:", err);
+      return Response.json({ playlists: [], error: "Unable to load playlists." }, { status: 500 });
+    }
+  }
+
+  const match = pathname.match(/^\/api\/playlist\/([^/]+)$/);
+  if (!match || req.method !== "GET") return null;
+
+  try {
+    const playlist = playlists.find((p) => p.id === match[1]);
+    if (!playlist) {
+      return Response.json({ success: false, error: "Playlist not found." }, { status: 404 });
+    }
+
+    const rows = await sql()`
+      SELECT id, title, book, channel, youtube_id, gradient, views, video_type, book_order
+      FROM videos WHERE id = ANY(${playlist.videoIds})
+    `;
+
+    // Preserve the playlist's declared order, skipping any ids that no longer
+    // exist in the videos table.
+    const byId = new Map(rows.map((row) => [row.id as number, row]));
+
+    const userId = (await getUserFromRequest(req))?.id ?? null;
+    const watchedIds = new Set<string>();
+    if (userId !== null) {
+      const history = await sql()`
+        SELECT youtube_id FROM watch_history WHERE user_id = ${userId}
+      `;
+      for (const row of history) watchedIds.add(row.youtube_id as string);
+    }
+
+    const videos = playlist.videoIds
+      .map((id) => byId.get(id))
+      .filter((row): row is NonNullable<typeof row> => Boolean(row))
+      .map((row) => ({
+        id: row.id as number,
+        title: row.title,
+        book: (row.book as string | null) || (row.title as string),
+        channel: row.channel,
+        views: row.views as number,
+        gradient: row.gradient,
+        youtubeId: row.youtube_id,
+        videoType: (row.video_type as string) || "story",
+        bookOrder: row.book_order as number,
+        watched: watchedIds.has(row.youtube_id as string),
+      }));
+
+    return Response.json({
+      playlist: {
+        id: playlist.id,
+        name: playlist.name,
+        description: playlist.description,
+      },
+      videos,
+    });
+  } catch (err) {
+    console.error("[api] playlist error:", err);
+    return Response.json({ success: false, error: "Unable to load playlist." }, { status: 500 });
   }
 }
 
@@ -550,6 +630,8 @@ for (let attempt = 1; ; attempt++) {
         if (videoResult) return videoResult;
         const videosResult = await handleApiVideos(req);
         if (videosResult) return videosResult;
+        const playlistsResult = await handleApiPlaylists(req);
+        if (playlistsResult) return playlistsResult;
         const videoActionResult = await handleApiVideoActions(req);
         if (videoActionResult) return videoActionResult;
         const profileResult = await handleApiProfile(req);
