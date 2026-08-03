@@ -30,12 +30,22 @@ export const Route = createRootRoute({
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://vidview-nxqq.onrender.com" },
-      { name: "twitter:card", content: "summary" },
+      // og:image is a static path — the owner updates the actual file via the
+      // hidden /upload-image page; the URL never changes.
+      {
+        property: "og:image",
+        content: "https://vidview-nxqq.onrender.com/og-image.png",
+      },
+      { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "VidView — Views of the Word" },
       {
         name: "twitter:description",
         content:
           "Watch Bible story videos, track your progress through every book, and discover the most-viewed scripture content.",
+      },
+      {
+        name: "twitter:image",
+        content: "https://vidview-nxqq.onrender.com/og-image.png",
       },
     ],
     links: [{ rel: "stylesheet", href: appCss }],

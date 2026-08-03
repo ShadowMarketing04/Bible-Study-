@@ -11,6 +11,8 @@
 import handler from "./dist/server/server.js";
 import { hashPassword, verifyPassword, signToken, verifyToken } from "./src/auth";
 import { sql } from "./src/db";
+import { existsSync, mkdirSync } from "node:fs";
+import path from "node:path";
 
 // Pinned, NOT read from the environment. The published preview URL
 // (<label>.<PUBLIC_SITE_DOMAIN>) is reverse-proxied to 0.0.0.0:3000 inside the
@@ -432,6 +434,61 @@ async function handleApiWaitlist(req: Request): Promise<Response | null> {
   }
 }
 
+// POST /api/upload-image — save an uploaded image as the site's og:image. Always
+// written as public/og-image.png so the share URL stays static (the <head> meta
+// tag never needs to change). Accepts multipart form data with a field named
+// "image". Only png/jpg/jpeg/webp/gif, max 10 MB. Writes both the source copy
+// (public/, committed to the repo) and the served copy (dist/client/), so
+// /og-image.png updates immediately without a rebuild.
+async function handleApiUploadImage(req: Request): Promise<Response | null> {
+  const { pathname } = new URL(req.url);
+  if (pathname !== "/api/upload-image" || req.method !== "POST") return null;
+
+  const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+  const ALLOWED_EXT = /\.(png|jpe?g|webp|gif)$/i;
+  const MAX_BYTES = 10 * 1024 * 1024;
+
+  try {
+    const form = await req.formData();
+    const file = form.get("image");
+    if (!(file instanceof File) || file.size === 0) {
+      return Response.json({ success: false, error: "Please choose an image file." }, { status: 400 });
+    }
+    if (!ALLOWED_TYPES.includes(file.type) || !ALLOWED_EXT.test(file.name || "")) {
+      return Response.json(
+        { success: false, error: "Only PNG, JPG, JPEG, WEBP, or GIF images are allowed." },
+        { status: 400 },
+      );
+    }
+    if (file.size > MAX_BYTES) {
+      return Response.json({ success: false, error: "Image must be 10 MB or smaller." }, { status: 400 });
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    // Source copy (public/) — survives rebuilds; the served copy (dist/client/)
+    // is what the running server actually hands out at /og-image.png.
+    const publicDir = path.join(import.meta.dir, "public");
+    mkdirSync(publicDir, { recursive: true });
+    await Bun.write(path.join(publicDir, "og-image.png"), bytes);
+
+    const clientDir = path.join(import.meta.dir, "dist", "client");
+    if (existsSync(clientDir)) {
+      await Bun.write(path.join(clientDir, "og-image.png"), bytes);
+    }
+
+    console.log("[api] og-image updated:", file.name, file.size, "bytes");
+    return Response.json({
+      success: true,
+      url: "/og-image.png",
+      publicUrl: "https://vidview-nxqq.onrender.com/og-image.png",
+    });
+  } catch (err) {
+    console.error("[api] upload-image error:", err);
+    return Response.json({ success: false, error: "Something went wrong. Please try again." }, { status: 500 });
+  }
+}
+
 // Take over the port, re-freeing and retrying if another publish grabbed it in the
 // gap between freeing and binding (last publish wins). Bun.serve throws EADDRINUSE
 // synchronously, so without this a raced publish would die while the shell already
@@ -460,6 +517,8 @@ for (let attempt = 1; ; attempt++) {
         if (stripeWebhookResult) return stripeWebhookResult;
         const waitlistResult = await handleApiWaitlist(req);
         if (waitlistResult) return waitlistResult;
+        const uploadImageResult = await handleApiUploadImage(req);
+        if (uploadImageResult) return uploadImageResult;
         
         // Static files
         if (pathname !== "/") {
