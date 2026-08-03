@@ -48,7 +48,7 @@ async function sendWelcomeEmail(to: string): Promise<void> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "VidView <onboarding@resend.dev>",
+      from: "VidView <welcome@shadowmarketingllc.com>",
       to: [to],
       subject: "Welcome to VidView — you're on the list!",
       html: `<p>Thank you for joining the VidView waitlist!</p>
