@@ -3,20 +3,44 @@ import { useState, useEffect, useCallback } from "react";
 
 export const Route = createFileRoute("/")({
   loader: async ({ location }) => {
-    const requestedBook = new URLSearchParams(location.searchStr).get("book")?.trim();
-    if (!requestedBook) return { bookVideo: null };
+    // TanStack Router exposes parsed search values as `location.search` in this
+    // version (older code incorrectly used the non-existent `searchStr`). Keep
+    // the string case too so this remains safe across SSR/router adapters.
+    const locationSearch = location.search as unknown;
+    let requestedBook: string | undefined;
+    let requestedSort: "order" | "views" = "order";
+    if (typeof locationSearch === "string") {
+      const params = new URLSearchParams(locationSearch);
+      requestedBook = params.get("book")?.trim() || undefined;
+      requestedSort = params.get("sort") === "views" ? "views" : "order";
+    } else if (locationSearch && typeof locationSearch === "object") {
+      const search = locationSearch as { book?: unknown; sort?: unknown };
+      requestedBook = typeof search.book === "string" ? search.book.trim() || undefined : undefined;
+      requestedSort = search.sort === "views" ? "views" : "order";
+    }
+
     try {
       const base = typeof window === "undefined" ? "http://0.0.0.0:3000" : "";
-      const response = await fetch(`${base}/api/videos`);
+      const response = await fetch(`${base}/api/videos?sort=${requestedSort}`);
+      if (!response.ok) throw new Error(`Video request failed (${response.status})`);
       const data = (await response.json()) as { videos?: Video[] };
-      const bookVideo = data.videos?.find((video) => video.book.toLowerCase() === requestedBook.toLowerCase()) ?? null;
-      return { bookVideo };
-    } catch { return { bookVideo: null }; }
+      const videos = data.videos ?? [];
+      const bookVideo = requestedBook
+        ? videos.find((video) => {
+            const book = video.book ?? video.title;
+            return book.toLowerCase() === requestedBook.toLowerCase();
+          }) ?? null
+        : null;
+      return { videos, bookVideo };
+    } catch {
+      // Keep the page renderable if the API is temporarily unavailable.
+      return { videos: [], bookVideo: null };
+    }
   },
   head: ({ loaderData }) => {
     const video = loaderData?.bookVideo;
     if (!video) return {};
-    const book = video.book;
+    const book = video.book ?? video.title;
     const description = `Watch the ${book} overview on VidView — a 7-minute animated summary of the book of ${book}.`;
     const image = `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`;
     const url = `https://vidview-nxqq.onrender.com/?book=${encodeURIComponent(book)}`;
@@ -388,9 +412,12 @@ function BookShareSection({ videos }: { videos: Video[] }) {
 
 function Home() {
   const { uploaded, sort: initialSort, welcome, watch: watchParam } = Route.useSearch();
+  const loaderData = Route.useLoaderData();
   const [sortMode, setSortMode] = useState<"order" | "views">(initialSort);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed state from the SSR loader so the first HTML contains real cards rather
+  // than skeletons. The effect below refreshes counts on the client as before.
+  const [videos, setVideos] = useState<Video[]>(loaderData.videos ?? []);
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
