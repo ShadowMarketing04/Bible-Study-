@@ -7,8 +7,12 @@ export const Route = createFileRoute("/")({
     // version (older code incorrectly used the non-existent `searchStr`). Keep
     // the string case too so this remains safe across SSR/router adapters.
     const locationSearch = location.search as unknown;
-    let requestedBook: string | undefined;
-    let requestedSort: "order" | "views" = "order";
+    // On SSR, some adapters provide only the absolute href for the raw request.
+    // Prefer it when available because it preserves the original query string.
+    const rawHref = (location as { href?: unknown }).href;
+    const hrefParams = typeof rawHref === "string" ? new URL(rawHref, "http://0.0.0.0:3000").searchParams : null;
+    let requestedBook: string | undefined = hrefParams?.get("book")?.trim() || undefined;
+    let requestedSort: "order" | "views" = hrefParams?.get("sort") === "views" ? "views" : "order";
     if (typeof locationSearch === "string") {
       const params = new URLSearchParams(locationSearch);
       requestedBook = params.get("book")?.trim() || undefined;
