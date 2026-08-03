@@ -235,7 +235,7 @@ async function handleApiVideos(req: Request): Promise<Response | null> {
       videos: rows.map((row) => ({
         id: row.id as number,
         title: row.title,
-        book: row.book,
+        book: (row.book as string | null) || (row.title as string),
         channel: row.channel,
         views: row.views as number,
         gradient: row.gradient,
