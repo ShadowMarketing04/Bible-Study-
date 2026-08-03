@@ -14,7 +14,8 @@ interface Video {
 export const Route = createFileRoute("/video/$videoId")({
   loader: async ({ params }) => {
     try {
-      const response = await fetch(`https://vidview-nxqq.onrender.com/api/video/${params.videoId}`);
+      const base = typeof window === "undefined" ? "http://0.0.0.0:3000" : "";
+      const response = await fetch(`${base}/api/video/${params.videoId}`);
       if (!response.ok) return { video: null };
       const data = (await response.json()) as { video?: Video };
       return { video: data.video ?? null };
